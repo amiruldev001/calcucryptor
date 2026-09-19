@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crypto R:R Calc</title>
-    <!-- Web App Manifest for Android PWA Support -->
     <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Crypto%20Risk%20Reward%20Calculator%22,%22short_name%22:%22RR%20Calc%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22#121824%22,%22theme_color%22:%22#1e293b%22,%22orientation%22:%22portrait%22}">
     <meta name="theme-color" content="#1e293b">
     <style>
@@ -161,33 +160,32 @@
     
     <div class="input-group">
         <label for="capital">Capital (RM)</label>
-        <input type="number" id="capital" value="100" step="any">
+        <input type="number" id="capital" value="100" step="any" inputmode="decimal">
     </div>
 
     <div class="row">
         <div class="input-group">
             <label for="entryPrice">Entry Price (RM)</label>
-            <input type="number" id="entryPrice" value="0.080" step="any">
+            <input type="number" id="entryPrice" value="0.080" step="any" inputmode="decimal">
         </div>
         <div class="input-group">
             <label for="stopLoss">Stop Loss Price (RM)</label>
-            <input type="number" id="stopLoss" value="0.074" step="any">
+            <input type="number" id="stopLoss" value="0.074" step="any" inputmode="decimal">
         </div>
     </div>
 
     <div class="row">
         <div class="input-group">
             <label for="rrRatio">Target R:R Ratio (1 : X)</label>
-            <input type="number" id="rrRatio" value="2" step="0.1">
+            <input type="number" id="rrRatio" value="2" step="any" inputmode="decimal">
         </div>
         <div class="input-group">
             <label for="feePercent">Transaction Fee (%)</label>
-            <input type="number" id="feePercent" value="0.6" step="0.01">
+            <input type="number" id="feePercent" value="0.6" step="any" inputmode="decimal">
         </div>
     </div>
 
     <div class="output-card">
-        <!-- REWARD CARD -->
         <div class="result-box reward">
             <div class="result-header">
                 <span>Target Take Profit</span>
@@ -200,7 +198,6 @@
             </div>
         </div>
 
-        <!-- RISK CARD -->
         <div class="result-box risk">
             <div class="result-header">
                 <span>Stop Loss Target</span>
@@ -213,7 +210,6 @@
             </div>
         </div>
 
-        <!-- NET REALIZED RATIO -->
         <div class="real-ratio-box" id="netRatioBox">
             Net Realized Risk-Reward Ratio: <strong id="netRatioText">1 : 0.00</strong>
         </div>
@@ -221,11 +217,11 @@
 </div>
 
 <script>
-    // Grab all DOM Elements
-    const fields = ['capital', 'entryPrice', 'stopLoss', 'rrRatio', 'feePercent'].reduce((acc, id) => {
-        acc[id] = document.getElementById(id);
-        return acc;
-    }, {});
+    const ids = ['capital', 'entryPrice', 'stopLoss', 'rrRatio', 'feePercent'];
+    const fields = {};
+    ids.forEach(id => {
+        fields[id] = document.getElementById(id);
+    });
 
     const outputs = {
         tpPriceText: document.getElementById('tpPriceText'),
@@ -240,30 +236,36 @@
     };
 
     function calculate() {
-        // Parse inputs safely
-        const capital = parseFloat(fields.capital.value) || 0;
-        const entryPrice = parseFloat(fields.entryPrice.value) || 0;
-        const stopLoss = parseFloat(fields.stopLoss.value) || 0;
-        const targetRR = parseFloat(fields.rrRatio.value) || 0;
-        const feeRate = (parseFloat(fields.feePercent.value) || 0) / 100;
+        const capital = Number(fields.capital.value) || 0;
+        const entryPrice = Number(fields.entryPrice.value) || 0;
+        const stopLoss = Number(fields.stopLoss.value) || 0;
+        const targetRR = Number(fields.rrRatio.value) || 0;
+        const feeRate = (Number(fields.feePercent.value) || 0) / 100;
 
         if (capital <= 0 || entryPrice <= 0 || stopLoss >= entryPrice) {
-            Object.values(outputs).forEach(el => el.textContent = "--");
+            outputs.tpPriceText.textContent = "RM 0.00";
+            outputs.netRewardText.textContent = "+RM 0.00";
+            outputs.grossRewardText.textContent = "Gross: +RM 0.00";
+            outputs.rewardFeesText.textContent = "Total Fees: RM 0.00";
+            outputs.slPriceText.textContent = "RM 0.00";
+            outputs.netRiskText.textContent = "-RM 0.00";
+            outputs.grossRiskText.textContent = "Gross: -RM 0.00";
+            outputs.riskFeesText.textContent = "Total Fees: RM 0.00";
+            outputs.netRatioText.textContent = "1 : 0.00";
             return;
         }
 
-        // 1. Math calculations based on structure
         const coinsPurchased = capital / entryPrice;
         const buyFee = capital * feeRate;
 
-        // Risk Calculations (Stop Loss)
+        // Risk math
         const grossLoss = (entryPrice - stopLoss) * coinsPurchased;
         const sellLossValue = stopLoss * coinsPurchased;
         const sellRiskFee = sellLossValue * feeRate;
         const totalRiskFees = buyFee + sellRiskFee;
         const netRisk = grossLoss + totalRiskFees;
 
-        // Reward Calculations (Take Profit Setup based on Technical Move)
+        // Reward math
         const priceRiskDistance = entryPrice - stopLoss;
         const takeProfitPrice = entryPrice + (priceRiskDistance * targetRR);
         
@@ -273,10 +275,9 @@
         const totalRewardFees = buyFee + sellRewardFee;
         const netReward = grossProfit - totalRewardFees;
 
-        // Realized Post-Fee Ratio
         const netRealizedRatio = netRisk > 0 ? (netReward / netRisk).toFixed(2) : "0.00";
 
-        // 2. Render Outputs to the Screen
+        // Display results
         outputs.tpPriceText.textContent = `RM ${takeProfitPrice.toFixed(4)}`;
         outputs.netRewardText.textContent = `+RM ${netReward.toFixed(2)}`;
         outputs.grossRewardText.textContent = `Gross: +RM ${grossProfit.toFixed(2)}`;
@@ -284,6 +285,6 @@
 
         outputs.slPriceText.textContent = `RM ${stopLoss.toFixed(4)}`;
         outputs.netRiskText.textContent = `-RM ${netRisk.toFixed(2)}`;
-        outputs.grossRiskText.textContent = `Gross: -RM ${grossLoss.toFixed(2)}`;
-        outputs.riskFeesText.textContent = `Total Fees: RM ${totalRiskFees.toFixed(2)}`;
-
+        outputs.grossRiskText.textContent = Gross: -RM ${grossLoss.toFixed(2)};
+        outputs.riskFeesText.textContent = Total Fees: RM ${totalRiskFees.toFixed(2)};
+        outputs.netRatioText.textContent = 1 : ${netRealizedRatio};}// Monitor value changes instantly across all mobile browsersids.forEach(id => {const inputEl = fields[id];inputEl.addEventListener('input', calculate);inputEl.addEventListener('change', calculate);inputEl.addEventListener('keyup', calculate);});// Run immediately on page loadwindow.addEventListener('DOMContentLoaded', calculate);calculate();
